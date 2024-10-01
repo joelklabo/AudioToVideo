@@ -24,36 +24,45 @@ if uploaded_file is not None:
         st.audio(temp_audio_path)
         
         if st.button("Generate Subtitled Video"):
-            with st.spinner("Processing..."):
-                try:
-                    # Process audio (convert to mp3)
-                    mp3_path = process_audio(temp_audio_path)
-                    
-                    # Transcribe audio
-                    transcription = transcribe_audio(mp3_path)
-                    
-                    # Generate video with subtitles
-                    output_video_path = tempfile.mktemp(suffix=".mp4")
-                    create_subtitled_video(mp3_path, transcription, output_video_path)
-                    
-                    # Provide download link
-                    with open(output_video_path, "rb") as file:
-                        st.download_button(
-                            label="Download Subtitled Video",
-                            data=file,
-                            file_name="subtitled_video.mp4",
-                            mime="video/mp4"
-                        )
-                except Exception as e:
-                    st.error(f"An error occurred during processing: {str(e)}")
-                finally:
-                    # Clean up temporary files
-                    if os.path.exists(temp_audio_path):
-                        os.remove(temp_audio_path)
-                    if os.path.exists(mp3_path):
-                        os.remove(mp3_path)
-                    if os.path.exists(output_video_path):
-                        os.remove(output_video_path)
+            status_placeholder = st.empty()
+            progress_bar = st.progress(0)
+
+            try:
+                status_placeholder.text("Processing audio...")
+                progress_bar.progress(10)
+                mp3_path = process_audio(temp_audio_path)
+                
+                status_placeholder.text("Transcribing audio...")
+                progress_bar.progress(40)
+                transcription = transcribe_audio(mp3_path)
+                
+                status_placeholder.text("Generating video with subtitles...")
+                progress_bar.progress(70)
+                output_video_path = tempfile.mktemp(suffix=".mp4")
+                create_subtitled_video(mp3_path, transcription, output_video_path)
+                
+                status_placeholder.text("Processing complete!")
+                progress_bar.progress(100)
+
+                # Provide download link
+                with open(output_video_path, "rb") as file:
+                    st.download_button(
+                        label="Download Subtitled Video",
+                        data=file,
+                        file_name="subtitled_video.mp4",
+                        mime="video/mp4"
+                    )
+            except Exception as e:
+                status_placeholder.text("An error occurred during processing.")
+                st.error(f"Error details: {str(e)}")
+            finally:
+                # Clean up temporary files
+                if os.path.exists(temp_audio_path):
+                    os.remove(temp_audio_path)
+                if os.path.exists(mp3_path):
+                    os.remove(mp3_path)
+                if os.path.exists(output_video_path):
+                    os.remove(output_video_path)
     except Exception as e:
         st.error(f"An error occurred while uploading the file: {str(e)}")
 
