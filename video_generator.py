@@ -20,6 +20,7 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
         
         # Parse SRT content
         subtitles = parse_srt(transcription)
+        logger.info(f"Parsed {len(subtitles)} subtitles")
         
         # Process video in chunks
         chunk_paths = []
@@ -32,6 +33,7 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
             
             subtitle_clips = []
             for start, end, text in chunk_subtitles:
+                logger.info(f"Creating subtitle: {start} - {end}: {text}")
                 text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
                              .set_position(('center', 'bottom'))
                              .set_duration(end - start)
@@ -90,4 +92,9 @@ def parse_srt(srt_content):
         h, m, s = time_str.replace(',', '.').split(':')
         return int(h) * 3600 + int(m) * 60 + float(s)
     
-    return [(time_to_seconds(start), time_to_seconds(end), text.strip()) for start, end, text in matches]
+    subtitles = [(time_to_seconds(start), time_to_seconds(end), text.strip()) for start, end, text in matches]
+    logger.info(f"Parsed {len(subtitles)} subtitles")
+    for i, (start, end, text) in enumerate(subtitles[:5]):
+        logger.info(f"Subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
+    return subtitles
+
