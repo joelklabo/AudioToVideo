@@ -43,7 +43,15 @@ def main():
     log_placeholder = st.empty()
 
     # File uploader
-    uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
+    try:
+        uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
+        logger.info("File uploader initialized successfully")
+        update_logs()
+    except Exception as e:
+        logger.error(f"Error initializing file uploader: {str(e)}")
+        st.error("An error occurred while initializing the file uploader. Please try again.")
+        update_logs()
+        return
 
     if uploaded_file is not None:
         try:
@@ -54,6 +62,8 @@ def main():
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
                 temp_file.write(uploaded_file.getbuffer())
                 temp_audio_path = temp_file.name
+            logger.info(f"Temporary file created: {temp_audio_path}")
+            update_logs()
 
             st.audio(temp_audio_path)
             
@@ -108,6 +118,8 @@ def main():
                         st.video(output_video_path)
                     else:
                         st.error("Video file was not created successfully or is empty.")
+                        logger.error("Video file was not created successfully or is empty.")
+                        update_logs()
                 except Exception as e:
                     status_placeholder.text("An error occurred during processing.")
                     st.error(f"Error details: {str(e)}")
@@ -117,15 +129,21 @@ def main():
                     # Clean up temporary files
                     for path in [temp_audio_path, mp3_path]:
                         if path and os.path.exists(path):
-                            os.remove(path)
-                            logger.info(f"Removed temporary file: {path}")
+                            try:
+                                os.remove(path)
+                                logger.info(f"Removed temporary file: {path}")
+                            except Exception as e:
+                                logger.error(f"Error removing temporary file {path}: {str(e)}")
                     if output_video_path and os.path.exists(output_video_path):
-                        os.remove(output_video_path)
-                        logger.info(f"Removed temporary file: {output_video_path}")
+                        try:
+                            os.remove(output_video_path)
+                            logger.info(f"Removed temporary file: {output_video_path}")
+                        except Exception as e:
+                            logger.error(f"Error removing temporary file {output_video_path}: {str(e)}")
                     update_logs()
         except Exception as e:
-            st.error(f"An error occurred while uploading the file: {str(e)}")
-            logger.error(f"Error during file upload: {str(e)}")
+            st.error(f"An error occurred while processing the uploaded file: {str(e)}")
+            logger.error(f"Error during file processing: {str(e)}")
             update_logs()
 
     st.markdown("""
