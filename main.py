@@ -41,7 +41,8 @@ def main():
     log_placeholder = st.empty()
 
     def update_logs():
-        log_placeholder.text_area("Logs", log_stream.getvalue(), height=200, key="log_area")
+        current_time = int(time.time() * 1000)  # Use milliseconds for more uniqueness
+        log_placeholder.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{current_time}")
 
     if uploaded_file is not None:
         try:
