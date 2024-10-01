@@ -59,15 +59,19 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
         
         # Write final output video file
         logger.info("Writing final video file")
-        final_video.write_videofile(
-            output_path,
-            fps=24,
-            codec='libx264',
-            audio_codec='aac',
-            preset='medium',
-            ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2']
-        )
-        logger.info(f"Video generation completed successfully: {output_path}")
+        try:
+            final_video.write_videofile(
+                output_path,
+                fps=24,
+                codec='libx264',
+                audio_codec='aac',
+                preset='medium',
+                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2']
+            )
+            logger.info(f"Video successfully written to {output_path}")
+        except Exception as e:
+            logger.error(f"Error writing video file: {str(e)}")
+            raise
     except Exception as e:
         logger.error(f"An error occurred during video generation: {str(e)}")
         raise
