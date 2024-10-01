@@ -1,14 +1,13 @@
 from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip
 import re
 import logging
-import tempfile
 import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def create_subtitled_video(audio_path, transcription, output_path, chunk_duration=60):
+def create_subtitled_video(audio_path, transcription, output_path):
     try:
         logger.info(f"Starting video generation with audio: {audio_path}")
         
@@ -22,42 +21,20 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
         subtitles = parse_srt(transcription)
         logger.info(f"Parsed {len(subtitles)} subtitles")
         
-        # Process video in chunks
-        chunk_paths = []
-        for i, chunk_start in enumerate(range(0, int(audio.duration), chunk_duration)):
-            chunk_end = min(chunk_start + chunk_duration, audio.duration)
-            logger.info(f"Processing chunk {i+1}: {chunk_start} - {chunk_end}")
-            
-            chunk_video = video.subclip(chunk_start, chunk_end)
-            chunk_subtitles = [s for s in subtitles if chunk_start <= s[0] < chunk_end]
-            
-            subtitle_clips = []
-            for start, end, text in chunk_subtitles:
-                logger.info(f"Creating subtitle: {start} - {end}: {text}")
-                text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
-                             .set_position(('center', 'bottom'))
-                             .set_duration(end - start)
-                             .set_start(start - chunk_start))
-                subtitle_clips.append(text_clip)
-            
-            final_chunk = CompositeVideoClip([chunk_video] + subtitle_clips)
-            
-            chunk_path = tempfile.mktemp(suffix=f"_chunk_{i}.mp4")
-            final_chunk.write_videofile(
-                chunk_path,
-                fps=24,
-                codec='libx264',
-                audio_codec='aac',
-                preset='ultrafast',
-                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart']
-            )
-            chunk_paths.append(chunk_path)
+        # Log detailed subtitle timings
+        for i, (start, end, text) in enumerate(subtitles):
+            logger.info(f"Subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
         
-        # Concatenate chunks
-        logger.info("Concatenating video chunks")
-        from moviepy.editor import concatenate_videoclips
-        final_clips = [VideoFileClip(path) for path in chunk_paths]
-        final_video = concatenate_videoclips(final_clips)
+        subtitle_clips = []
+        for start, end, text in subtitles:
+            logger.info(f"Creating subtitle: {start} - {end}: {text}")
+            text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
+                         .set_position(('center', 'bottom'))
+                         .set_duration(end - start)
+                         .set_start(start))
+            subtitle_clips.append(text_clip)
+        
+        final_video = CompositeVideoClip([video] + subtitle_clips)
         
         # Write final output video file
         logger.info("Writing final video file")
@@ -77,12 +54,6 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
     except Exception as e:
         logger.error(f"An error occurred during video generation: {str(e)}")
         raise
-    finally:
-        # Clean up temporary chunk files
-        for path in chunk_paths:
-            if os.path.exists(path):
-                os.remove(path)
-                logger.info(f"Removed temporary chunk file: {path}")
 
 def parse_srt(srt_content):
     pattern = r'(\d+:\d+:\d+,\d+) --> (\d+:\d+:\d+,\d+)\n((?:(?!\n\n).|\n)*)'
@@ -93,8 +64,4 @@ def parse_srt(srt_content):
         return int(h) * 3600 + int(m) * 60 + float(s)
     
     subtitles = [(time_to_seconds(start), time_to_seconds(end), text.strip()) for start, end, text in matches]
-    logger.info(f"Parsed {len(subtitles)} subtitles")
-    for i, (start, end, text) in enumerate(subtitles[:5]):
-        logger.info(f"Subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
     return subtitles
-
