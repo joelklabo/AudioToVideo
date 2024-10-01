@@ -41,18 +41,23 @@ def main():
                 output_video_path = "output_video.mp4"
                 create_subtitled_video(mp3_path, transcription, output_video_path)
                 
-                # Display the video
-                st.video(output_video_path)
-                
-                # Provide download link
-                with open(output_video_path, "rb") as file:
-                    st.download_button(
-                        label="Download Video",
-                        data=file,
-                        file_name="subtitled_video.mp4",
-                        mime="video/mp4"
-                    )
-                status_placeholder.text("Processing complete!")
+                # Check if the video file exists
+                if os.path.exists(output_video_path):
+                    # Display the video
+                    st.video(output_video_path)
+                    
+                    # Provide download link
+                    with open(output_video_path, "rb") as file:
+                        st.download_button(
+                            label="Download Video",
+                            data=file,
+                            file_name="subtitled_video.mp4",
+                            mime="video/mp4"
+                        )
+                    status_placeholder.text("Processing complete!")
+                else:
+                    st.error(f"Output video file not found: {output_video_path}")
+                    logger.error(f"Output video file not found: {output_video_path}")
             except Exception as e:
                 error_msg = f"An error occurred: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
                 st.error(error_msg)
