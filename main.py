@@ -22,9 +22,6 @@ load_dotenv()
 # Set timeout for long-running tasks (in seconds)
 TASK_TIMEOUT = 300
 
-# Move log_placeholder and update_logs() outside of main()
-log_placeholder = st.empty()
-
 def update_logs():
     current_time = int(time.time() * 1000)
     log_placeholder.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{current_time}")
@@ -40,14 +37,18 @@ def run_with_timeout(func, *args, timeout=TASK_TIMEOUT):
 
 def main():
     st.title("Audio to Subtitled Video Generator")
+    
+    # Move log_placeholder to the beginning of the main() function
+    global log_placeholder
+    log_placeholder = st.empty()
 
     # File uploader
     uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
 
     if uploaded_file is not None:
         try:
-            logger.info(f"Processing uploaded file: {uploaded_file.name}")
-            update_logs()  # Add log update
+            logger.info(f"File uploaded: {uploaded_file.name} (Type: {uploaded_file.type})")
+            update_logs()
             
             # Create a temporary file to store the uploaded audio
             with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
@@ -66,22 +67,28 @@ def main():
                 try:
                     status_placeholder.text("Processing audio...")
                     progress_bar.progress(10)
+                    logger.info("Starting audio processing")
+                    update_logs()
                     mp3_path = run_with_timeout(process_audio, temp_audio_path)
                     logger.info("Audio processing completed")
-                    update_logs()  # Add log update
+                    update_logs()
                     
                     status_placeholder.text("Transcribing audio...")
                     progress_bar.progress(40)
+                    logger.info("Starting audio transcription")
+                    update_logs()
                     transcription = run_with_timeout(transcribe_audio, mp3_path)
                     logger.info("Audio transcription completed")
-                    update_logs()  # Add log update
+                    update_logs()
                     
                     status_placeholder.text("Generating video with subtitles...")
                     progress_bar.progress(70)
+                    logger.info("Starting video generation")
+                    update_logs()
                     output_video_path = tempfile.mktemp(suffix=".mp4")
                     run_with_timeout(create_subtitled_video, mp3_path, transcription, output_video_path)
                     logger.info("Video generation completed")
-                    update_logs()  # Add log update
+                    update_logs()
                     
                     status_placeholder.text("Processing complete!")
                     progress_bar.progress(100)
@@ -105,7 +112,7 @@ def main():
                     status_placeholder.text("An error occurred during processing.")
                     st.error(f"Error details: {str(e)}")
                     logger.error(f"Error during processing: {str(e)}")
-                    update_logs()  # Add log update
+                    update_logs()
                 finally:
                     # Clean up temporary files
                     for path in [temp_audio_path, mp3_path]:
@@ -115,11 +122,11 @@ def main():
                     if output_video_path and os.path.exists(output_video_path):
                         os.remove(output_video_path)
                         logger.info(f"Removed temporary file: {output_video_path}")
-                    update_logs()  # Add log update
+                    update_logs()
         except Exception as e:
             st.error(f"An error occurred while uploading the file: {str(e)}")
             logger.error(f"Error during file upload: {str(e)}")
-            update_logs()  # Add log update
+            update_logs()
 
     st.markdown("""
     ### Instructions:
@@ -135,4 +142,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.critical(f"Unhandled exception in main app: {str(e)}")
         st.error("An unexpected error occurred. Please try again later.")
-    update_logs()  # Add final log update
+    update_logs()

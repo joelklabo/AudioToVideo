@@ -13,6 +13,7 @@ def create_subtitled_video(audio_path, transcription, output_path):
         
         # Load audio
         audio = AudioFileClip(audio_path)
+        logger.info(f"Audio duration: {audio.duration:.2f} seconds")
         
         # Create a black background video
         video = ColorClip(size=(640, 480), color=(0,0,0)).set_duration(audio.duration).set_audio(audio)
@@ -29,9 +30,10 @@ def create_subtitled_video(audio_path, transcription, output_path):
                          .set_duration(end - start)
                          .set_start(start))
             subtitle_clips.append(text_clip)
-            logger.info(f"Added subtitle clip: {start:.2f} - {end:.2f}")
+            logger.info(f"Added subtitle clip: start={start:.2f}, end={end:.2f}, duration={text_clip.duration:.2f}")
         
         final_video = CompositeVideoClip([video] + subtitle_clips)
+        logger.info(f"Final video duration: {final_video.duration:.2f}, Number of subtitle clips: {len(subtitle_clips)}")
         
         # Write final output video file
         logger.info("Writing final video file")
