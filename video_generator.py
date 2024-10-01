@@ -6,7 +6,7 @@ def create_subtitled_video(audio_path, transcription, output_path):
     audio = AudioFileClip(audio_path)
     
     # Create a black background video
-    video = VideoFileClip("color:black", duration=audio.duration).set_audio(audio)
+    video = VideoFileClip('color:black').set_duration(audio.duration).set_audio(audio)
     
     # Parse SRT content
     subtitle_clips = []
