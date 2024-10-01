@@ -21,18 +21,15 @@ def create_subtitled_video(audio_path, transcription, output_path):
         subtitles = parse_srt(transcription)
         logger.info(f"Parsed {len(subtitles)} subtitles")
         
-        # Log detailed subtitle timings
-        for i, (start, end, text) in enumerate(subtitles):
-            logger.info(f"Subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
-        
         subtitle_clips = []
         for start, end, text in subtitles:
-            logger.info(f"Creating subtitle: {start} - {end}: {text}")
+            logger.info(f"Creating subtitle: {start:.2f} - {end:.2f}: {text}")
             text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
                          .set_position(('center', 'bottom'))
                          .set_duration(end - start)
                          .set_start(start))
             subtitle_clips.append(text_clip)
+            logger.info(f"Added subtitle clip: {start:.2f} - {end:.2f}")
         
         final_video = CompositeVideoClip([video] + subtitle_clips)
         
@@ -64,4 +61,8 @@ def parse_srt(srt_content):
         return int(h) * 3600 + int(m) * 60 + float(s)
     
     subtitles = [(time_to_seconds(start), time_to_seconds(end), text.strip()) for start, end, text in matches]
+    
+    for i, (start, end, text) in enumerate(subtitles):
+        logger.info(f"Parsed subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
+    
     return subtitles
