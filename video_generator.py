@@ -46,8 +46,8 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
                 fps=24,
                 codec='libx264',
                 audio_codec='aac',
-                preset='medium',
-                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2']
+                preset='ultrafast',
+                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart']
             )
             chunk_paths.append(chunk_path)
         
@@ -65,8 +65,8 @@ def create_subtitled_video(audio_path, transcription, output_path, chunk_duratio
                 fps=24,
                 codec='libx264',
                 audio_codec='aac',
-                preset='medium',
-                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2']
+                preset='ultrafast',
+                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-movflags', '+faststart']
             )
             logger.info(f"Video successfully written to {output_path}")
         except Exception as e:

@@ -66,14 +66,20 @@ def main():
                     status_placeholder.text("Processing complete!")
                     progress_bar.progress(100)
 
-                    # Provide download link
-                    with open(output_video_path, "rb") as file:
-                        st.download_button(
-                            label="Download Subtitled Video",
-                            data=file,
-                            file_name="subtitled_video.mp4",
-                            mime="video/mp4"
-                        )
+                    if os.path.exists(output_video_path) and os.path.getsize(output_video_path) > 0:
+                        # Provide download link
+                        with open(output_video_path, "rb") as file:
+                            st.download_button(
+                                label="Download Subtitled Video",
+                                data=file,
+                                file_name="subtitled_video.mp4",
+                                mime="video/mp4"
+                            )
+                        
+                        # Display video player
+                        st.video(output_video_path)
+                    else:
+                        st.error("Video file was not created successfully or is empty.")
                 except TimeoutError as te:
                     status_placeholder.text("Processing timed out.")
                     st.error(f"Error details: {str(te)}")
@@ -97,7 +103,7 @@ def main():
     1. Upload an audio file (MP3, WAV, M4A, or OGG format).
     2. Click the "Generate Subtitled Video" button.
     3. Wait for the processing to complete.
-    4. Download the generated video with subtitles.
+    4. Download the generated video with subtitles or watch it in the app.
     """)
 
 if __name__ == "__main__":
