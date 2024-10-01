@@ -3,4 +3,3 @@ python-dotenv
 openai
 moviepy
 pydub
-concurrent-futures

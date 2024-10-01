@@ -20,7 +20,7 @@ This Streamlit app creates subtitled videos from audio files using OpenAI's Whis
    pip install -r requirements.txt
    ```
 
-   Note: If you're using Python 3.7 or later, you may not need to install `concurrent-futures` as it's included in the standard library.
+   Note: This project requires Python 3.7 or later due to the use of features introduced in that version.
 
 3. Set up your OpenAI API key:
    Create a `.env` file in the project root and add your OpenAI API key:
