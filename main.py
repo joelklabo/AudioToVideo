@@ -23,7 +23,7 @@ load_dotenv()
 TASK_TIMEOUT = 300
 
 def update_logs():
-    st.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{int(time.time() * 1000)}")
+    st.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{int(time.time() * 1000000)}")
 
 def run_with_timeout(func, *args, timeout=TASK_TIMEOUT):
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -39,7 +39,7 @@ def main():
     
     # File uploader
     try:
-        uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
+        uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"], key="file_uploader")
         logger.info("File uploader initialized successfully")
         update_logs()
     except Exception as e:
@@ -60,9 +60,9 @@ def main():
             logger.info(f"Temporary file created: {temp_audio_path}")
             update_logs()
 
-            st.audio(temp_audio_path)
+            st.audio(temp_audio_path, format=f"audio/{uploaded_file.type}")
             
-            if st.button("Generate Subtitled Video"):
+            if st.button("Generate Subtitled Video", key="generate_button"):
                 status_placeholder = st.empty()
                 progress_bar = st.progress(0)
 
@@ -106,7 +106,8 @@ def main():
                                 label="Download Subtitled Video",
                                 data=file,
                                 file_name="subtitled_video.mp4",
-                                mime="video/mp4"
+                                mime="video/mp4",
+                                key="download_button"
                             )
                         
                         # Display video player

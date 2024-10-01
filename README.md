@@ -7,6 +7,19 @@ This Streamlit app creates subtitled videos from audio files using OpenAI's Whis
 - Python 3.7 or higher
 - OpenAI API key
 
+## Python Installation
+
+This project requires Python 3.7 or higher. If you don't have Python installed or need to upgrade, follow these steps:
+
+1. Visit the official Python website: https://www.python.org/downloads/
+2. Download the latest version of Python (3.7 or higher) for your operating system.
+3. Run the installer and follow the installation instructions.
+4. After installation, open a new terminal/command prompt and verify the installation by running:
+   ```
+   python --version
+   ```
+   This should display the installed Python version.
+
 ## Installation
 
 1. Clone the repository:
@@ -19,10 +32,6 @@ This Streamlit app creates subtitled videos from audio files using OpenAI's Whis
    ```
    pip install -r requirements.txt
    ```
-
-   Note: This project requires Python 3.7 or later due to the use of features introduced in that version.
-
-   Note: You can check your Python version by running `python --version` in your terminal. If you need to update Python, please visit the official Python website (https://www.python.org) for installation instructions.
 
 3. Set up your OpenAI API key:
    Create a `.env` file in the project root and add your OpenAI API key:
