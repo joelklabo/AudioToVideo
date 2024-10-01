@@ -1,13 +1,16 @@
 from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip
 import re
 import logging
+import tempfile
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-def create_subtitled_video(audio_path, transcription, output_path):
+def create_subtitled_video(audio_path, transcription, output_path, chunk_duration=60):
     try:
-        logging.info(f"Starting video generation with audio: {audio_path}")
+        logger.info(f"Starting video generation with audio: {audio_path}")
         
         # Load audio
         audio = AudioFileClip(audio_path)
@@ -16,20 +19,46 @@ def create_subtitled_video(audio_path, transcription, output_path):
         video = ColorClip(size=(640, 480), color=(0,0,0)).set_duration(audio.duration).set_audio(audio)
         
         # Parse SRT content
-        subtitle_clips = []
-        for subtitle in parse_srt(transcription):
-            start, end, text = subtitle
-            text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
-                         .set_position(('center', 'bottom'))
-                         .set_duration(end - start)
-                         .set_start(start))
-            subtitle_clips.append(text_clip)
+        subtitles = parse_srt(transcription)
         
-        # Combine video and subtitles
-        final_video = CompositeVideoClip([video] + subtitle_clips)
+        # Process video in chunks
+        chunk_paths = []
+        for i, chunk_start in enumerate(range(0, int(audio.duration), chunk_duration)):
+            chunk_end = min(chunk_start + chunk_duration, audio.duration)
+            logger.info(f"Processing chunk {i+1}: {chunk_start} - {chunk_end}")
+            
+            chunk_video = video.subclip(chunk_start, chunk_end)
+            chunk_subtitles = [s for s in subtitles if chunk_start <= s[0] < chunk_end]
+            
+            subtitle_clips = []
+            for start, end, text in chunk_subtitles:
+                text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
+                             .set_position(('center', 'bottom'))
+                             .set_duration(end - start)
+                             .set_start(start - chunk_start))
+                subtitle_clips.append(text_clip)
+            
+            final_chunk = CompositeVideoClip([chunk_video] + subtitle_clips)
+            
+            chunk_path = tempfile.mktemp(suffix=f"_chunk_{i}.mp4")
+            final_chunk.write_videofile(
+                chunk_path,
+                fps=24,
+                codec='libx264',
+                audio_codec='aac',
+                preset='medium',
+                ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2']
+            )
+            chunk_paths.append(chunk_path)
         
-        # Write output video file with updated encoding settings
-        logging.info("Writing video file with updated encoding settings")
+        # Concatenate chunks
+        logger.info("Concatenating video chunks")
+        from moviepy.editor import concatenate_videoclips
+        final_clips = [VideoFileClip(path) for path in chunk_paths]
+        final_video = concatenate_videoclips(final_clips)
+        
+        # Write final output video file
+        logger.info("Writing final video file")
         final_video.write_videofile(
             output_path,
             fps=24,
@@ -38,10 +67,16 @@ def create_subtitled_video(audio_path, transcription, output_path):
             preset='medium',
             ffmpeg_params=['-pix_fmt', 'yuv420p', '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2']
         )
-        logging.info(f"Video generation completed successfully: {output_path}")
+        logger.info(f"Video generation completed successfully: {output_path}")
     except Exception as e:
-        logging.error(f"An error occurred during video generation: {str(e)}")
+        logger.error(f"An error occurred during video generation: {str(e)}")
         raise
+    finally:
+        # Clean up temporary chunk files
+        for path in chunk_paths:
+            if os.path.exists(path):
+                os.remove(path)
+                logger.info(f"Removed temporary chunk file: {path}")
 
 def parse_srt(srt_content):
     pattern = r'(\d+:\d+:\d+,\d+) --> (\d+:\d+:\d+,\d+)\n((?:(?!\n\n).|\n)*)'
