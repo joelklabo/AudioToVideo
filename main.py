@@ -4,7 +4,7 @@ import tempfile
 from dotenv import load_dotenv
 from transcription import transcribe_audio
 from video_generator import create_subtitled_video
-from audio_utils import convert_to_wav
+from audio_utils import process_audio
 
 # Load environment variables
 load_dotenv()
@@ -33,15 +33,15 @@ if uploaded_file is not None:
             if st.button("Generate Subtitled Video"):
                 with st.spinner("Processing..."):
                     try:
-                        # Convert to WAV if necessary
-                        wav_path = convert_to_wav(temp_audio_path)
+                        # Process audio (convert to mp3)
+                        mp3_path = process_audio(temp_audio_path)
                         
                         # Transcribe audio
-                        transcription = transcribe_audio(wav_path)
+                        transcription = transcribe_audio(mp3_path)
                         
                         # Generate video with subtitles
                         output_video_path = tempfile.mktemp(suffix=".mp4")
-                        create_subtitled_video(wav_path, transcription, output_video_path)
+                        create_subtitled_video(mp3_path, transcription, output_video_path)
                         
                         # Provide download link
                         with open(output_video_path, "rb") as file:
@@ -57,8 +57,8 @@ if uploaded_file is not None:
                         # Clean up temporary files
                         if os.path.exists(temp_audio_path):
                             os.remove(temp_audio_path)
-                        if os.path.exists(wav_path) and wav_path != temp_audio_path:
-                            os.remove(wav_path)
+                        if os.path.exists(mp3_path):
+                            os.remove(mp3_path)
                         if os.path.exists(output_video_path):
                             os.remove(output_video_path)
     except Exception as e:
