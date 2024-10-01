@@ -23,8 +23,7 @@ load_dotenv()
 TASK_TIMEOUT = 300
 
 def update_logs():
-    current_time = int(time.time() * 1000)
-    log_placeholder.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{current_time}")
+    st.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{int(time.time() * 1000)}")
 
 def run_with_timeout(func, *args, timeout=TASK_TIMEOUT):
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -38,10 +37,6 @@ def run_with_timeout(func, *args, timeout=TASK_TIMEOUT):
 def main():
     st.title("Audio to Subtitled Video Generator")
     
-    # Move log_placeholder to the beginning of the main() function
-    global log_placeholder
-    log_placeholder = st.empty()
-
     # File uploader
     try:
         uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
