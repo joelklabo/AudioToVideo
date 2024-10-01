@@ -1,11 +1,24 @@
 from moviepy.editor import VideoFileClip, AudioFileClip, TextClip, CompositeVideoClip, ColorClip
+from moviepy.config import change_settings
 import re
 import logging
 import os
+from moviepy.config import get_setting
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Add this at the beginning of the file
+FFMPEG_PATH = "/usr/local/bin/ffmpeg"  # Update this path according to your system
+IMAGEMAGICK_BINARY = "/usr/local/bin/convert"  # Update this path according to your system
+
+# Configure MoviePy settings
+change_settings({"FFMPEG_BINARY": FFMPEG_PATH, "IMAGEMAGICK_BINARY": IMAGEMAGICK_BINARY})
+
+# Log the current settings
+logger.info(f"FFMPEG_BINARY: {get_setting('FFMPEG_BINARY')}")
+logger.info(f"IMAGEMAGICK_BINARY: {get_setting('IMAGEMAGICK_BINARY')}")
 
 def create_subtitled_video(audio_path, transcription, output_path):
     try:
@@ -16,23 +29,23 @@ def create_subtitled_video(audio_path, transcription, output_path):
         logger.info(f"Audio duration: {audio.duration:.2f} seconds")
         
         # Create a black background video
-        video = ColorClip(size=(640, 480), color=(0,0,0)).set_duration(audio.duration).set_audio(audio)
+        video = ColorClip(size=(640, 480), color=(0,0,0)).set_duration(audio.duration)
         
         # Parse SRT content
         subtitles = parse_srt(transcription)
         logger.info(f"Parsed {len(subtitles)} subtitles")
         
         subtitle_clips = []
-        for start, end, text in subtitles:
-            logger.info(f"Creating subtitle: {start:.2f} - {end:.2f}: {text}")
+        for i, (start, end, text) in enumerate(subtitles):
+            logger.info(f"Creating subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
             text_clip = (TextClip(text, fontsize=24, color='white', font='Arial', method='caption', size=video.size)
                          .set_position(('center', 'bottom'))
-                         .set_duration(end - start)
-                         .set_start(start))
+                         .set_start(start)
+                         .set_duration(end - start))
             subtitle_clips.append(text_clip)
-            logger.info(f"Added subtitle clip: start={start:.2f}, end={end:.2f}, duration={text_clip.duration:.2f}")
+            logger.info(f"Added subtitle clip {i+1}: start={start:.2f}, end={end:.2f}, duration={text_clip.duration:.2f}")
         
-        final_video = CompositeVideoClip([video] + subtitle_clips)
+        final_video = CompositeVideoClip([video] + subtitle_clips).set_audio(audio)
         logger.info(f"Final video duration: {final_video.duration:.2f}, Number of subtitle clips: {len(subtitle_clips)}")
         
         # Write final output video file
@@ -55,16 +68,32 @@ def create_subtitled_video(audio_path, transcription, output_path):
         raise
 
 def parse_srt(srt_content):
-    pattern = r'(\d+:\d+:\d+,\d+) --> (\d+:\d+:\d+,\d+)\n((?:(?!\n\n).|\n)*)'
-    matches = re.findall(pattern, srt_content, re.DOTALL)
+    # Split the content into individual subtitle entries
+    subtitle_entries = re.split(r'\n\n+', srt_content.strip())
     
-    def time_to_seconds(time_str):
-        h, m, s = time_str.replace(',', '.').split(':')
-        return int(h) * 3600 + int(m) * 60 + float(s)
-    
-    subtitles = [(time_to_seconds(start), time_to_seconds(end), text.strip()) for start, end, text in matches]
+    subtitles = []
+    for entry in subtitle_entries:
+        # Split each entry into its components
+        parts = entry.split('\n')
+        if len(parts) >= 3:  # Ensure we have at least the timing and text
+            # Extract timing information
+            timing = parts[1]
+            start_time, end_time = timing.split(' --> ')
+            
+            # Convert time to seconds
+            start_seconds = time_to_seconds(start_time)
+            end_seconds = time_to_seconds(end_time)
+            
+            # Join the remaining parts as the subtitle text
+            text = ' '.join(parts[2:])
+            
+            subtitles.append((start_seconds, end_seconds, text))
     
     for i, (start, end, text) in enumerate(subtitles):
         logger.info(f"Parsed subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
     
     return subtitles
+
+def time_to_seconds(time_str):
+    hours, minutes, seconds = time_str.replace(',', '.').split(':')
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)

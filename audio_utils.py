@@ -1,7 +1,12 @@
 import logging
 from pydub import AudioSegment
+import os
 
 logger = logging.getLogger(__name__)
+
+# Add this at the beginning of the file
+FFMPEG_PATH = "/usr/local/bin/ffmpeg"  # Update this path according to your system
+AudioSegment.converter = FFMPEG_PATH
 
 def convert_to_wav(input_path):
     logger.info(f"Starting conversion to WAV: {input_path}")

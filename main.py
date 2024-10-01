@@ -1,159 +1,71 @@
 import streamlit as st
 import os
-import tempfile
-import logging
-import io
-import contextlib
-from dotenv import load_dotenv
-from transcription import transcribe_audio
 from video_generator import create_subtitled_video
+from transcription import transcribe_audio
 from audio_utils import process_audio
-import concurrent.futures
-import time
+import logging
+import traceback
 
 # Configure logging
-log_stream = io.StringIO()
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', stream=log_stream)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-# Load environment variables
-load_dotenv()
-
-# Set timeout for long-running tasks (in seconds)
-TASK_TIMEOUT = 300
-
-def update_logs():
-    st.text_area("Logs", log_stream.getvalue(), height=200, key=f"log_area_{int(time.time() * 1000000)}")
-
-def run_with_timeout(func, *args, timeout=TASK_TIMEOUT):
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future = executor.submit(func, *args)
-        try:
-            return future.result(timeout=timeout)
-        except concurrent.futures.TimeoutError:
-            logger.error(f"Task timed out after {timeout} seconds")
-            raise TimeoutError(f"Task timed out after {timeout} seconds")
 
 def main():
     st.title("Audio to Subtitled Video Generator")
-    
-    # File uploader
-    try:
-        uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"], key="file_uploader")
-        logger.info("File uploader initialized successfully")
-        update_logs()
-    except Exception as e:
-        logger.error(f"Error initializing file uploader: {str(e)}")
-        st.error("An error occurred while initializing the file uploader. Please try again.")
-        update_logs()
-        return
+
+    uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
 
     if uploaded_file is not None:
-        try:
-            logger.info(f"File uploaded: {uploaded_file.name} (Type: {uploaded_file.type})")
-            update_logs()
-            
-            # Create a temporary file to store the uploaded audio
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
-                temp_file.write(uploaded_file.getbuffer())
-                temp_audio_path = temp_file.name
-            logger.info(f"Temporary file created: {temp_audio_path}")
-            update_logs()
-
-            st.audio(temp_audio_path, format=f"audio/{uploaded_file.type}")
-            
-            if st.button("Generate Subtitled Video", key="generate_button"):
-                status_placeholder = st.empty()
-                progress_bar = st.progress(0)
-
-                output_video_path = None
-                mp3_path = None
-
-                try:
-                    status_placeholder.text("Processing audio...")
-                    progress_bar.progress(10)
-                    logger.info("Starting audio processing")
-                    update_logs()
-                    mp3_path = run_with_timeout(process_audio, temp_audio_path)
-                    logger.info("Audio processing completed")
-                    update_logs()
-                    
-                    status_placeholder.text("Transcribing audio...")
-                    progress_bar.progress(40)
-                    logger.info("Starting audio transcription")
-                    update_logs()
-                    transcription = run_with_timeout(transcribe_audio, mp3_path)
-                    logger.info("Audio transcription completed")
-                    update_logs()
-                    
-                    status_placeholder.text("Generating video with subtitles...")
-                    progress_bar.progress(70)
-                    logger.info("Starting video generation")
-                    update_logs()
-                    output_video_path = tempfile.mktemp(suffix=".mp4")
-                    run_with_timeout(create_subtitled_video, mp3_path, transcription, output_video_path)
-                    logger.info("Video generation completed")
-                    update_logs()
-                    
-                    status_placeholder.text("Processing complete!")
-                    progress_bar.progress(100)
-                    update_logs()
-
-                    if os.path.exists(output_video_path) and os.path.getsize(output_video_path) > 0:
-                        # Provide download link
-                        with open(output_video_path, "rb") as file:
-                            st.download_button(
-                                label="Download Subtitled Video",
-                                data=file,
-                                file_name="subtitled_video.mp4",
-                                mime="video/mp4",
-                                key="download_button"
-                            )
-                        
-                        # Display video player
-                        st.video(output_video_path)
-                    else:
-                        st.error("Video file was not created successfully or is empty.")
-                        logger.error("Video file was not created successfully or is empty.")
-                        update_logs()
-                except Exception as e:
-                    status_placeholder.text("An error occurred during processing.")
-                    st.error(f"Error details: {str(e)}")
-                    logger.error(f"Error during processing: {str(e)}")
-                    update_logs()
-                finally:
-                    # Clean up temporary files
-                    for path in [temp_audio_path, mp3_path]:
-                        if path and os.path.exists(path):
-                            try:
-                                os.remove(path)
-                                logger.info(f"Removed temporary file: {path}")
-                            except Exception as e:
-                                logger.error(f"Error removing temporary file {path}: {str(e)}")
-                    if output_video_path and os.path.exists(output_video_path):
+        st.write("File uploaded successfully!")
+        
+        # Save the uploaded file temporarily
+        temp_audio_path = "temp_audio" + os.path.splitext(uploaded_file.name)[1]
+        with open(temp_audio_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+        
+        if st.button("Generate Subtitled Video"):
+            status_placeholder = st.empty()
+            try:
+                status_placeholder.text("Processing...")
+                
+                # Process the audio file
+                status_placeholder.text("Processing audio...")
+                mp3_path = process_audio(temp_audio_path)
+                
+                # Transcribe the audio
+                status_placeholder.text("Transcribing audio...")
+                transcription = transcribe_audio(mp3_path)
+                
+                # Generate the video
+                status_placeholder.text("Generating video...")
+                output_video_path = "output_video.mp4"
+                create_subtitled_video(mp3_path, transcription, output_video_path)
+                
+                # Display the video
+                st.video(output_video_path)
+                
+                # Provide download link
+                with open(output_video_path, "rb") as file:
+                    st.download_button(
+                        label="Download Video",
+                        data=file,
+                        file_name="subtitled_video.mp4",
+                        mime="video/mp4"
+                    )
+                status_placeholder.text("Processing complete!")
+            except Exception as e:
+                error_msg = f"An error occurred: {str(e)}\n\nTraceback:\n{traceback.format_exc()}"
+                st.error(error_msg)
+                logger.error(error_msg)
+            finally:
+                # Clean up temporary files
+                for path in [temp_audio_path, mp3_path, output_video_path]:
+                    if path and os.path.exists(path):
                         try:
-                            os.remove(output_video_path)
-                            logger.info(f"Removed temporary file: {output_video_path}")
+                            os.remove(path)
+                            logger.info(f"Removed temporary file: {path}")
                         except Exception as e:
-                            logger.error(f"Error removing temporary file {output_video_path}: {str(e)}")
-                    update_logs()
-        except Exception as e:
-            st.error(f"An error occurred while processing the uploaded file: {str(e)}")
-            logger.error(f"Error during file processing: {str(e)}")
-            update_logs()
-
-    st.markdown("""
-    ### Instructions:
-    1. Upload an audio file (MP3, WAV, M4A, or OGG format).
-    2. Click the "Generate Subtitled Video" button.
-    3. Wait for the processing to complete.
-    4. Download the generated video with subtitles or watch it in the app.
-    """)
+                            logger.error(f"Error removing temporary file {path}: {str(e)}")
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        logger.critical(f"Unhandled exception in main app: {str(e)}")
-        st.error("An unexpected error occurred. Please try again later.")
-    update_logs()
+    main()
