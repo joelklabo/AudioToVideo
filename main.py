@@ -41,7 +41,7 @@ def main():
     log_placeholder = st.empty()
 
     def update_logs():
-        log_placeholder.text_area("Logs", log_stream.getvalue(), height=200)
+        log_placeholder.text_area("Logs", log_stream.getvalue(), height=200, key="log_area")
 
     if uploaded_file is not None:
         try:
@@ -57,6 +57,9 @@ def main():
             if st.button("Generate Subtitled Video"):
                 status_placeholder = st.empty()
                 progress_bar = st.progress(0)
+
+                output_video_path = None
+                mp3_path = None
 
                 try:
                     status_placeholder.text("Processing audio...")
@@ -93,11 +96,6 @@ def main():
                         st.video(output_video_path)
                     else:
                         st.error("Video file was not created successfully or is empty.")
-                except TimeoutError as te:
-                    status_placeholder.text("Processing timed out.")
-                    st.error(f"Error details: {str(te)}")
-                    logger.error(f"TimeoutError: {str(te)}")
-                    update_logs()
                 except Exception as e:
                     status_placeholder.text("An error occurred during processing.")
                     st.error(f"Error details: {str(e)}")
@@ -105,10 +103,13 @@ def main():
                     update_logs()
                 finally:
                     # Clean up temporary files
-                    for path in [temp_audio_path, mp3_path, output_video_path]:
-                        if os.path.exists(path):
+                    for path in [temp_audio_path, mp3_path]:
+                        if path and os.path.exists(path):
                             os.remove(path)
                             logger.info(f"Removed temporary file: {path}")
+                    if output_video_path and os.path.exists(output_video_path):
+                        os.remove(output_video_path)
+                        logger.info(f"Removed temporary file: {output_video_path}")
                     update_logs()
         except Exception as e:
             st.error(f"An error occurred while uploading the file: {str(e)}")
