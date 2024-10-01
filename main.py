@@ -2,6 +2,8 @@ import streamlit as st
 import os
 import tempfile
 import logging
+import io
+import contextlib
 from dotenv import load_dotenv
 from transcription import transcribe_audio
 from video_generator import create_subtitled_video
@@ -10,7 +12,8 @@ import concurrent.futures
 import time
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log_stream = io.StringIO()
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', stream=log_stream)
 logger = logging.getLogger(__name__)
 
 # Load environment variables
@@ -34,6 +37,12 @@ def main():
     # File uploader
     uploaded_file = st.file_uploader("Choose an audio file", type=["mp3", "wav", "m4a", "ogg"])
 
+    # Display logs
+    log_placeholder = st.empty()
+
+    def update_logs():
+        log_placeholder.text_area("Logs", log_stream.getvalue(), height=200)
+
     if uploaded_file is not None:
         try:
             logger.info(f"Processing uploaded file: {uploaded_file.name}")
@@ -53,18 +62,22 @@ def main():
                     status_placeholder.text("Processing audio...")
                     progress_bar.progress(10)
                     mp3_path = run_with_timeout(process_audio, temp_audio_path)
+                    update_logs()
                     
                     status_placeholder.text("Transcribing audio...")
                     progress_bar.progress(40)
                     transcription = run_with_timeout(transcribe_audio, mp3_path)
+                    update_logs()
                     
                     status_placeholder.text("Generating video with subtitles...")
                     progress_bar.progress(70)
                     output_video_path = tempfile.mktemp(suffix=".mp4")
                     run_with_timeout(create_subtitled_video, mp3_path, transcription, output_video_path)
+                    update_logs()
                     
                     status_placeholder.text("Processing complete!")
                     progress_bar.progress(100)
+                    update_logs()
 
                     if os.path.exists(output_video_path) and os.path.getsize(output_video_path) > 0:
                         # Provide download link
@@ -84,19 +97,23 @@ def main():
                     status_placeholder.text("Processing timed out.")
                     st.error(f"Error details: {str(te)}")
                     logger.error(f"TimeoutError: {str(te)}")
+                    update_logs()
                 except Exception as e:
                     status_placeholder.text("An error occurred during processing.")
                     st.error(f"Error details: {str(e)}")
                     logger.error(f"Error during processing: {str(e)}")
+                    update_logs()
                 finally:
                     # Clean up temporary files
                     for path in [temp_audio_path, mp3_path, output_video_path]:
                         if os.path.exists(path):
                             os.remove(path)
                             logger.info(f"Removed temporary file: {path}")
+                    update_logs()
         except Exception as e:
             st.error(f"An error occurred while uploading the file: {str(e)}")
             logger.error(f"Error during file upload: {str(e)}")
+            update_logs()
 
     st.markdown("""
     ### Instructions:
