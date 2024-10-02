@@ -112,6 +112,7 @@ def main():
         st.subheader("Choose Background Color")
         color_options = {
             "Black": "#000000",
+            "White": "#FFFFFF",
             "Dark Gray": "#333333",
             "Navy Blue": "#000080",
             "Dark Green": "#006400",
@@ -125,14 +126,18 @@ def main():
             "Olive": "#808000",
             "Gold": "#FFD700"
         }
-        selected_color = st.selectbox("Background Color", list(color_options.keys()))
+        selected_color = st.selectbox("Background Color", list(color_options.keys()), index=0)
         bg_color_hex = color_options[selected_color]
         bg_color_rgb = hex_to_rgb(bg_color_hex)
 
         # Font color selection
         st.subheader("Choose Font Color")
         font_color_options = color_options  # Use the same colors as background
-        selected_font_color = st.selectbox("Font Color", list(font_color_options.keys()))
+        selected_font_color = st.selectbox(
+            "Font Color", 
+            list(font_color_options.keys()), 
+            index=list(font_color_options.keys()).index("White")
+        )
         font_color_hex = font_color_options[selected_font_color]
         font_color_rgb = hex_to_rgb(font_color_hex)
 
