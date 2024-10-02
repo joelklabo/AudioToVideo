@@ -2,6 +2,10 @@
 
 This Streamlit app creates subtitled videos from audio files using OpenAI's Whisper API for transcription.
 
+## Screenshot
+
+![App Screenshot](app-screenshot.png)
+
 ## Prerequisites
 
 - Python 3.7 or higher
