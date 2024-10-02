@@ -20,7 +20,7 @@ change_settings({"FFMPEG_BINARY": FFMPEG_PATH, "IMAGEMAGICK_BINARY": IMAGEMAGICK
 logger.info(f"FFMPEG_BINARY: {get_setting('FFMPEG_BINARY')}")
 logger.info(f"IMAGEMAGICK_BINARY: {get_setting('IMAGEMAGICK_BINARY')}")
 
-def create_subtitled_video(audio_path, transcription, output_path):
+def create_subtitled_video(audio_path, transcription, output_path, bg_color=(0,0,0), title=None, byline=None):
     try:
         logger.info(f"Starting video generation with audio: {audio_path}")
         
@@ -28,24 +28,59 @@ def create_subtitled_video(audio_path, transcription, output_path):
         audio = AudioFileClip(audio_path)
         logger.info(f"Audio duration: {audio.duration:.2f} seconds")
         
-        # Create a black background video
-        video = ColorClip(size=(1280, 720), color=(0,0,0)).set_duration(audio.duration)
+        # Create a background video with the specified color
+        video = ColorClip(size=(1280, 720), color=bg_color).set_duration(audio.duration)
         
         # Parse SRT content
         subtitles = parse_srt(transcription)
         logger.info(f"Parsed {len(subtitles)} subtitles")
         
+        clips = [video]
+
+        # Find a system font
+        system_fonts = [
+            '/System/Library/Fonts/Helvetica.ttc',  # macOS
+            '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',  # Linux
+            'C:\\Windows\\Fonts\\arial.ttf'  # Windows
+        ]
+        font = next((f for f in system_fonts if os.path.exists(f)), None)
+        
+        if font is None:
+            logger.warning("No system font found. Using default font.")
+
+        # Add title if provided
+        if title:
+            title_fontsize = 75  # Change this value to adjust title font size
+            logger.info(f"Creating title clip with font size: {title_fontsize}")
+            title_clip = (TextClip(title, fontsize=title_fontsize, color='white', font=font, method='label')
+                          .set_position(('center', 25))
+                          .set_duration(audio.duration))
+            clips.append(title_clip)
+
+        # Add byline if provided
+        if byline:
+            byline_fontsize = 40  # Change this value to adjust byline font size
+            logger.info(f"Creating byline clip with font size: {byline_fontsize}")
+            byline_clip = (TextClip(byline, fontsize=byline_fontsize, color='white', font=font, method='label')
+                           .set_position(('right', 'bottom'))
+                           .margin(right=10, bottom=10, opacity=0)
+                           .set_duration(audio.duration))
+            clips.append(byline_clip)
+        
         subtitle_clips = []
+        subtitle_fontsize = 50  # Change this value to adjust subtitle font size
+        logger.info(f"Creating subtitle clips with font size: {subtitle_fontsize}")
         for i, (start, end, text) in enumerate(subtitles):
             logger.info(f"Creating subtitle {i+1}: {start:.2f} - {end:.2f}: {text}")
-            text_clip = (TextClip(text, fontsize=30, color='white', font='Arial', method='caption', size=(1200, None))
-                         .set_position('center')  # Changed from ('center', 'bottom') to 'center'
+            text_clip = (TextClip(text, fontsize=subtitle_fontsize, color='white', font=font, method='label')
+                         .set_position('center')
                          .set_start(start)
                          .set_duration(end - start))
             subtitle_clips.append(text_clip)
             logger.info(f"Added subtitle clip {i+1}: start={start:.2f}, end={end:.2f}, duration={text_clip.duration:.2f}")
         
-        final_video = CompositeVideoClip([video] + subtitle_clips).set_audio(audio)
+        clips.extend(subtitle_clips)
+        final_video = CompositeVideoClip(clips).set_audio(audio)
         logger.info(f"Final video duration: {final_video.duration:.2f}, Number of subtitle clips: {len(subtitle_clips)}")
         
         # Write final output video file
